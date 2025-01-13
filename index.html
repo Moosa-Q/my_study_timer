@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer & Stopwatch</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #333;
+            color: #FFD700;
+            padding: 50px;
+        }
+        .container {
+            background-color: #444;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: inline-block;
+        }
+        button, input {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        h1 {
+            font-size: 48px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Pomodoro Timer</h2>
+        <input type="text" id="custom-time" placeholder="Set time (mm:ss)" style="width: 150px;">
+        <h1 id="pomodoro-display">25:00</h1>
+        <button onclick="setPomodoroTime()">Set</button>
+        <button onclick="startPomodoro()">Start</button>
+        <button onclick="stopPomodoro()">Stop</button>
+        <button onclick="resetPomodoro()">Reset</button>
+    </div>
+    <br><br>
+    <div class="container">
+        <h2>Stopwatch</h2>
+        <h1 id="stopwatch-display">00:00:00.000</h1>
+        <button onclick="startStopwatch()">Start</button>
+        <button onclick="stopStopwatch()">Stop</button>
+        <button onclick="resetStopwatch()">Reset</button>
+    </div>
+
+    <audio id="alarm-sound">
+        <source src="veryloudairhorn.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Pomodoro Timer
+        let pomodoroTime = 25 * 60;
+        let pomodoroInterval;
+        const alarmSound = document.getElementById('alarm-sound');
+
+        function updatePomodoroDisplay() {
+            let minutes = Math.floor(pomodoroTime / 60);
+            let seconds = pomodoroTime % 60;
+            document.getElementById('pomodoro-display').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function setPomodoroTime() {
+            let input = document.getElementById('custom-time').value;
+            let parts = input.split(':');
+            if (parts.length === 2) {
+                let minutes = parseInt(parts[0]);
+                let seconds = parseInt(parts[1]);
+                if (!isNaN(minutes) && !isNaN(seconds)) {
+                    pomodoroTime = (minutes * 60) + seconds;
+                    updatePomodoroDisplay();
+                }
+            } else if (!isNaN(parseInt(input))) {
+                pomodoroTime = parseInt(input) * 60;
+                updatePomodoroDisplay();
+            }
+        }
+
+        function startPomodoro() {
+            if (!pomodoroInterval) {
+                const endTime = Date.now() + pomodoroTime * 1000;
+                localStorage.setItem('pomodoroEndTime', endTime);
+                pomodoroInterval = setInterval(() => {
+                    const remainingTime = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+                    pomodoroTime = remainingTime;
+                    updatePomodoroDisplay();
+
+                    if (remainingTime <= 0) {
+                        clearInterval(pomodoroInterval);
+                        pomodoroInterval = null;
+                        localStorage.removeItem('pomodoroEndTime');
+                        alarmSound.play();
+                        alert('Time for a break!');
+                    }
+                }, 1000);
+            }
+        }
+
+        function stopPomodoro() {
+            clearInterval(pomodoroInterval);
+            pomodoroInterval = null;
+            localStorage.removeItem('pomodoroEndTime');
+        }
+
+        function resetPomodoro() {
+            stopPomodoro();
+            pomodoroTime = 25 * 60;
+            updatePomodoroDisplay();
+        }
+
+        function resumePomodoro() {
+            const savedEndTime = localStorage.getItem('pomodoroEndTime');
+            if (savedEndTime) {
+                const remainingTime = Math.max(0, Math.floor((savedEndTime - Date.now()) / 1000));
+                if (remainingTime > 0) {
+                    pomodoroTime = remainingTime;
+                    startPomodoro();
+                } else {
+                    localStorage.removeItem('pomodoroEndTime');
+                }
+            }
+        }
+
+        // Resume timer if it was running before reload
+        window.onload = function() {
+            updatePomodoroDisplay();
+            resumePomodoro();
+        };
+
+        // Stopwatch
+        let stopwatchTime = 0;
+        let stopwatchInterval;
+
+        function updateStopwatchDisplay() {
+            let hours = Math.floor(stopwatchTime / 3600000);
+            let minutes = Math.floor((stopwatchTime % 3600000) / 60000);
+            let seconds = Math.floor((stopwatchTime % 60000) / 1000);
+            let milliseconds = stopwatchTime % 1000;
+            document.getElementById('stopwatch-display').textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+        }
+
+        function startStopwatch() {
+            if (!stopwatchInterval) {
+                stopwatchInterval = setInterval(() => {
+                    stopwatchTime += 10;
+                    updateStopwatchDisplay();
+                }, 10);
+            }
+        }
+
+        function stopStopwatch() {
+            clearInterval(stopwatchInterval);
+            stopwatchInterval = null;
+        }
+
+        function resetStopwatch() {
+            stopStopwatch();
+            stopwatchTime = 0;
+            updateStopwatchDisplay();
+        }
+    </script>
+</body>
+</html>
